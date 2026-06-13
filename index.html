@@ -1,0 +1,1183 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+
+<script type="text/javascript" charset="utf-8" src="https://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+const carouselState = new Map();
+const carouselTimers = new Map();
+let activeVideo = null;
+
+function getCarouselTrack(carouselId) {
+    return document.getElementById(`carousel-${carouselId}`);
+}
+
+function getCarouselIndex(carouselId) {
+    return carouselState.get(carouselId) || 0;
+}
+
+function setCarouselIndex(carouselId, index) {
+    carouselState.set(carouselId, index);
+}
+
+function isAnyVideoPlaying(track) {
+    const videos = track.querySelectorAll("video");
+    for (const video of videos) {
+        if (!video.paused && !video.ended && video.readyState > 2) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function isAnyVideoPlayingGlobal() {
+    const videos = document.querySelectorAll("video");
+    for (const video of videos) {
+        if (!video.paused && !video.ended && video.readyState > 2) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function tryAutoPlay(video) {
+    if (!video) return;
+    const playPromise = video.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+        playPromise.catch(() => {
+            const onReady = () => {
+                video.play().catch(() => {});
+            };
+            video.addEventListener("canplay", onReady, { once: true });
+        });
+    }
+}
+
+function moveCarousel(carouselId, direction) {
+    const track = getCarouselTrack(carouselId);
+    if (!track) return;
+    const items = track.children.length;
+    if (!items) return;
+
+    const nextIndex = (getCarouselIndex(carouselId) + direction + items) % items;
+    setCarouselIndex(carouselId, nextIndex);
+    track.style.transform = `translateX(-${nextIndex * 100}%)`;
+
+    const carousel = document.querySelector(`.video-carousel[data-carousel="${carouselId}"]`);
+    if (carousel && carousel.dataset.autoplay === "true" && !isAnyVideoPlayingGlobal()) {
+        const activeVideo = track.children[nextIndex]?.querySelector("video");
+        tryAutoPlay(activeVideo);
+    }
+}
+
+function startCarouselAutoRotate(carouselId, intervalMs = 3500) {
+    if (carouselTimers.has(carouselId)) return;
+    const timer = setInterval(() => {
+        const track = getCarouselTrack(carouselId);
+        if (!track) return;
+        if (!isAnyVideoPlaying(track) && !isAnyVideoPlayingGlobal()) {
+            moveCarousel(carouselId, 1);
+        }
+    }, intervalMs);
+    carouselTimers.set(carouselId, timer);
+}
+
+function isManagedVideo(video) {
+    // videos whose playback is driven by the demo/compare carousels manage themselves
+    return !!(video.closest && (video.closest(".compare-carousel") || video.closest(".demo-carousel")));
+}
+
+function pauseOtherVideos(currentVideo) {
+    document.querySelectorAll("video").forEach((video) => {
+        if (video === currentVideo) return;
+        // never pause carousel-managed videos (demo / comparison grids)
+        if (isManagedVideo(video)) return;
+        video.pause();
+    });
+}
+
+function setupCompareGrid(grid) {
+    // videos default to paused with their own controls; nothing to wire up.
+}
+
+let compareIndex = 0;
+function buildCompareDots() {
+    const slides = document.querySelectorAll("#compare-carousel .compare-slide");
+    const dots = document.getElementById("compare-dots");
+    if (!dots) return;
+    dots.innerHTML = "";
+    slides.forEach((_, k) => {
+        const dot = document.createElement("span");
+        dot.className = "compare-dot" + (k === compareIndex ? " active" : "");
+        dot.addEventListener("click", () => showCompare(k));
+        dots.appendChild(dot);
+    });
+}
+function showCompare(idx) {
+    const slides = Array.from(document.querySelectorAll("#compare-carousel .compare-slide"));
+    if (!slides.length) return;
+    compareIndex = (idx + slides.length) % slides.length;
+    slides.forEach((slide, k) => {
+        const on = k === compareIndex;
+        slide.classList.toggle("active", on);
+        slide.querySelectorAll("video").forEach((v) => {
+            if (!on) { v.pause(); }
+        });
+    });
+    const dots = document.querySelectorAll("#compare-dots .compare-dot");
+    dots.forEach((d, k) => d.classList.toggle("active", k === compareIndex));
+}
+function moveCompare(dir) {
+    showCompare(compareIndex + dir);
+}
+
+let demoIndex = 0;
+function buildDemoDots() {
+    const slides = document.querySelectorAll("#demo-carousel .demo-slide");
+    const dots = document.getElementById("demo-dots");
+    if (!dots) return;
+    dots.innerHTML = "";
+    slides.forEach((_, k) => {
+        const dot = document.createElement("span");
+        dot.className = "compare-dot" + (k === demoIndex ? " active" : "");
+        dot.addEventListener("click", () => showDemo(k));
+        dots.appendChild(dot);
+    });
+}
+function showDemo(idx) {
+    const slides = Array.from(document.querySelectorAll("#demo-carousel .demo-slide"));
+    if (!slides.length) return;
+    demoIndex = (idx + slides.length) % slides.length;
+    slides.forEach((slide, k) => {
+        const on = k === demoIndex;
+        slide.classList.toggle("active", on);
+        slide.querySelectorAll("video").forEach((v) => {
+            if (on) { v.play().catch(() => {}); } else { v.pause(); }
+        });
+    });
+    const dots = document.querySelectorAll("#demo-dots .compare-dot");
+    dots.forEach((d, k) => d.classList.toggle("active", k === demoIndex));
+}
+function moveDemo(dir) {
+    showDemo(demoIndex + dir);
+}
+
+function setActiveVideo(video) {
+    if (!video) return;
+    if (activeVideo && activeVideo !== video) {
+        activeVideo.pause();
+    }
+    if (video.hasAttribute("autoplay")) {
+        video.removeAttribute("autoplay");
+    }
+    activeVideo = video;
+    pauseOtherVideos(video);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".video-carousel").forEach((carousel) => {
+        const carouselId = carousel.dataset.carousel;
+        if (!carouselId) return;
+        setCarouselIndex(carouselId, 0);
+        startCarouselAutoRotate(carouselId);
+    });
+
+    document.querySelectorAll(".video-carousel.auto-carousel").forEach((carousel) => {
+        const carouselId = carousel.dataset.carousel;
+        if (!carouselId) return;
+        const track = getCarouselTrack(carouselId);
+        if (!track) return;
+        const videos = track.querySelectorAll("video");
+        videos.forEach((video) => {
+            video.muted = true;
+            video.playsInline = true;
+        });
+    });
+
+    document.querySelectorAll(".video-carousel[data-autoplay='true']").forEach((carousel) => {
+        const carouselId = carousel.dataset.carousel;
+        if (!carouselId) return;
+        const track = getCarouselTrack(carouselId);
+        if (!track) return;
+        const videos = track.querySelectorAll("video");
+        videos.forEach((video) => {
+            video.muted = true;
+            video.playsInline = true;
+        });
+        const firstVideo = track.children[0]?.querySelector("video");
+        if (!isAnyVideoPlayingGlobal()) {
+            tryAutoPlay(firstVideo);
+        }
+    });
+
+    document.querySelectorAll(".compare-grid").forEach((grid) => setupCompareGrid(grid));
+    buildCompareDots();
+    showCompare(0);
+
+    buildDemoDots();
+    showDemo(0);
+
+    document.querySelectorAll("video").forEach((video) => {
+        if (isManagedVideo(video)) return;
+        video.addEventListener("play", () => setActiveVideo(video));
+    });
+
+    document.addEventListener("play", (event) => {
+        const target = event.target;
+        if (target && target.tagName === "VIDEO" && !isManagedVideo(target)) {
+            setActiveVideo(target);
+        }
+    }, true);
+
+    document.addEventListener("playing", (event) => {
+        const target = event.target;
+        if (target && target.tagName === "VIDEO" && !isManagedVideo(target)) {
+            setActiveVideo(target);
+        }
+    }, true);
+});
+</script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+<style type="text/css">
+body {
+    font-family: "Titillium Web", "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+    font-weight: 300;
+    font-size: 17px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+@media screen and (min-width: 980px){
+    body {
+        width: 980px;
+    }
+}
+
+b, strong {
+    font-weight: 600;
+}
+h1 {
+    font-weight:300;
+    line-height: 1.15em;
+}
+
+h2 {
+    font-size: 2em;
+}
+a:link,a:visited {
+    color: #1f4fd8;
+    text-decoration: none;
+}
+a:hover {
+    color: #208799;
+}
+h1 {
+    text-align: center;
+}
+h2,h3 {
+    text-align: left;
+}
+
+h1 {
+    font-size: 40px;
+    font-weight: 500;
+}
+h2 {
+    font-weight: 400;
+    margin: 16px 0px 4px 0px;
+}
+h3 {
+    font-size: 1.45em;
+    font-weight: 600;
+    margin: 18px 0px 6px 0px;
+}
+
+.paper-title {
+    padding: 1px 0px 1px 0px;
+}
+section {
+    margin: 32px 0px 32px 0px;
+    text-align: justify;
+    clear: both;
+}
+.col-5 {
+     width: 20%;
+     float: left;
+}
+.col-4 {
+     width: 25%;
+     float: left;
+}
+.col-3 {
+     width: 33%;
+     float: left;
+}
+.col-2 {
+     width: 50%;
+     float: left;
+}
+.col-1 {
+     width: 100%;
+     float: left;
+}
+
+.author-row, .affil-row {
+    font-size: 26px;
+}
+
+.author-row-new {
+    text-align: center;
+}
+
+.author-row-new a {
+    display: inline-block;
+    font-size: 20px;
+    padding: 4px;
+}
+
+.author-row-new sup {
+    color: #313436;
+    font-size: 12px;
+}
+
+.affiliations-new {
+    font-size: 18px;
+    text-align: center;
+    width: 80%;
+    margin: 0 auto;
+    margin-bottom: 20px;
+}
+
+.row {
+    margin: 16px 0px 16px 0px;
+}
+.authors {
+    font-size: 26px;
+}
+.affiliatons {
+    font-size: 18px;
+}
+.equal-contrib {
+    font-size: 14px;
+}
+.affil-row {
+    margin-top: 18px;
+}
+.teaser {
+    max-width: 100%;
+}
+.text-center {
+    text-align: center;
+}
+.screenshot {
+    width: 256px;
+    border: 1px solid #ddd;
+}
+.screenshot-el {
+    margin-bottom: 16px;
+}
+hr {
+    height: 1px;
+    border: 0;
+    border-top: 1px solid #ddd;
+    margin: 0;
+}
+.material-icons {
+    vertical-align: -6px;
+}
+p {
+    line-height: 1.25em;
+}
+.caption {
+    font-size: 16px;
+    color: #666;
+    margin-top: 4px;
+    margin-bottom: 10px;
+}
+video {
+    display: block;
+    margin: auto;
+}
+figure {
+    display: block;
+    margin: auto;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+#bibtex pre {
+    font-size: 14px;
+    background-color: #eee;
+    padding: 16px;
+}
+.green {
+    color: #0E710E;
+    font-weight: bold;
+}
+.orange {
+    color: #d35400;
+    font-weight: bold;
+}
+.flex-row {
+    display: flex;
+    flex-flow: row wrap;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.coming-soon {
+    position: absolute;
+    top: -15px;
+    right: -15px;
+}
+
+.paper-btn:hover {
+    color: #FF8563;
+    transform: translateY(-2px);
+}
+
+.paper-btn-parent {
+    display: flex;
+    justify-content: center;
+    margin: 16px 0px;
+    gap: 25px;
+    font-size: 20px;
+}
+
+.github-btn:hover {
+    color: #FF8563;
+    transform: translateY(-2px);
+}
+
+.container {
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 16px;
+    padding-right: 16px;
+}
+
+.venue {
+    font-size: 23px;
+}
+
+pre {
+    font-size: 0.9em;
+    padding-left: 7px;
+    padding-right: 7px;
+    padding-top: 3px;
+    padding-bottom: 3px;
+    border-radius: 3px;
+    background-color: rgb(235, 235, 235);
+    overflow-x: auto;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.row::after {
+  content: "";
+  clear: both;
+  display: table;
+}
+
+.figure img {
+    width: 100%;
+}
+
+blockquote {
+    background-color: rgba(40, 40, 40, 0.2);
+    padding: 0px;
+    margin: 2px 0;
+    border-radius: 10px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+.video-carousel {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    margin: 16px auto 24px;
+    overflow: hidden;
+}
+
+.video-carousel-track {
+    display: flex;
+    transition: transform 0.4s ease-in-out;
+}
+
+.video-carousel video {
+    width: 100%;
+    flex-shrink: 0;
+}
+
+.carousel-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0,0,0,0.4);
+    border: none;
+    color: white;
+    font-size: 24px;
+    padding: 8px 12px;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.carousel-btn.left { left: 10px; }
+.carousel-btn.right { right: 10px; }
+
+.carousel-desc {
+    margin: 6px 0 8px 0;
+}
+.method-figure img {
+    height: var(--img-height, 240px);
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+}
+.method-figure {
+    text-align: center;
+}
+.side-by-side {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+.side-by-side img {
+    width: 48%;
+    height: auto;
+}
+
+.subfig-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    align-items: end;
+    width: 100%;
+    margin: 10px auto;
+}
+.subfig-row figure {
+    margin: 0;
+}
+.subfig-row img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+.subfig-row figcaption {
+    text-align: center;
+    font-size: 15px;
+    color: #444;
+    margin-top: 6px;
+}
+@media screen and (max-width: 600px) {
+    .subfig-row { grid-template-columns: 1fr; }
+}
+
+.demo-carousel {
+    position: relative;
+    width: 100%;
+    margin: 14px auto 0;
+}
+.demo-slide {
+    display: none;
+}
+.demo-slide.active {
+    display: block;
+}
+.demo-side-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 5;
+}
+.demo-side-btn.left { left: 8px; }
+.demo-side-btn.right { right: 8px; }
+.demo-side-btn:hover { transform: translateY(-50%); }
+.demo-dots-row {
+    display: flex;
+    justify-content: center;
+    margin: 16px 0 24px;
+}
+.demo-block {
+    max-width: 760px;
+    margin: 0 auto;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    color: #4a4a4a;
+}
+.demo-scenario {
+    background: #f8f9fa;
+    border: 1px solid #ededed;
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin-bottom: 16px;
+}
+.demo-scenario h3 {
+    margin: 0 0 8px;
+    font-size: 20px;
+    font-weight: 600;
+    color: #222;
+    font-family: inherit;
+}
+.demo-scenario p {
+    margin: 0;
+    font-size: 16px;
+    color: #555;
+    line-height: 1.6;
+}
+.demo-video video {
+    width: 100%;
+    display: block;
+    border-radius: 8px;
+    background: #000;
+}
+.demo-profiles {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-top: 18px;
+}
+.demo-profile {
+    display: flex;
+    gap: 14px;
+    background: #f8f9fa;
+    border: 1px solid #ededed;
+    border-radius: 12px;
+    padding: 16px 18px;
+}
+.demo-profile img {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid #e0e0e0;
+}
+.demo-profile-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: #222;
+    margin-bottom: 3px;
+}
+.demo-profile-desc {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+    line-height: 1.5;
+    margin-bottom: 8px;
+}
+.demo-profile-goal {
+    font-size: 15px;
+    color: #666;
+    line-height: 1.5;
+}
+.demo-profile-goal b {
+    color: #333;
+    font-weight: 600;
+}
+@media screen and (max-width: 600px) {
+    .demo-profiles { grid-template-columns: 1fr; }
+}
+
+.compare-carousel {
+    position: relative;
+    width: 100%;
+    margin: 16px auto 8px;
+    padding: 0 70px;
+}
+.compare-slide {
+    display: none;
+}
+.compare-slide.active {
+    display: block;
+}
+.compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 16px;
+    width: 100%;
+    margin: 0 auto;
+}
+.compare-cell {
+    margin: 0;
+}
+.compare-cell video {
+    width: 100%;
+    display: block;
+    border-radius: 4px;
+    background: #000;
+}
+.compare-cell figcaption {
+    text-align: center;
+    font-size: 17px;
+    color: #333;
+    margin: 0 0 6px;
+}
+.compare-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    margin: 14px 0 4px;
+}
+.compare-nav-btn {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: #4a4a4a;
+    border: 2px solid #2f2f2f;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+.compare-nav-btn:hover {
+    background: #5c5c5c;
+}
+.compare-nav-btn svg {
+    width: 18px;
+    height: 18px;
+}
+.compare-dots {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+}
+.compare-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #d4d7dc;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+.compare-dot.active {
+    background: #4285f4;
+}
+@media screen and (max-width: 600px) {
+    .compare-grid { grid-template-columns: 1fr; }
+}
+
+.video-wrap {
+  width: 75%;
+  margin: 0 auto;
+}
+
+.video-wrap iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+}
+
+/* ---- Placeholder styling for empty media (videos/demos left blank) ---- */
+.media-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #9aa0a6;
+    font-size: 15px;
+    letter-spacing: 0.04em;
+    background:
+        repeating-linear-gradient(
+            45deg,
+            #f5f6f8,
+            #f5f6f8 12px,
+            #eceef1 12px,
+            #eceef1 24px
+        );
+    border: 1px dashed #c9ced4;
+    border-radius: 6px;
+    box-sizing: border-box;
+}
+.media-placeholder::before {
+    content: attr(data-label);
+}
+.placeholder-video {
+    width: 100%;
+    flex-shrink: 0;
+    aspect-ratio: 16 / 9;
+}
+.video-wrap .placeholder-video {
+    aspect-ratio: 16 / 9;
+}
+
+</style>
+
+    <link href='https://fonts.googleapis.com/css?family=Titillium+Web:400,600,700,400italic,600italic,700italic,300,300italic' rel='stylesheet' type='text/css'>
+    <head>
+        <meta charset="utf-8">
+        <title>Resonant Minds: Closed-Loop Social Avatars with Theory of Mind</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta property="og:description" content="Resonant Minds: Closed-Loop Social Avatars with Theory of Mind"/>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+        <link href="https://fonts.googleapis.com/css2?family=FontAwesome" rel="stylesheet">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="Resonant Minds: Closed-Loop Social Avatars with Theory of Mind">
+    </head>
+
+<body>
+<div class="container">
+    <div class="paper-title">
+    <h1>
+        <b>Resonant Minds</b>: <br> Closed-Loop Social Avatars with Theory of Mind
+    </h1>
+    </div>
+
+    <div id="authors">
+        <center>
+            <div class="author-row-new">
+                <a href="https://jxb1st.github.io/">Jianxu Shangguan<sup>1</sup></a>,
+                <a href="https://xj.editlife.cn/">Jing Xu<sup>2</sup></a>,
+                <a href="https://alvinyh.github.io">Hang Ye<sup>2</sup></a>,
+                <a href="https://shirleymaxx.github.io/">Xiaoxuan Ma<sup>3</sup></a>,
+                <a href="https://cfcs.pku.edu.cn/wangyizhou/">Yizhou Wang<sup>2</sup></a>,
+                <a href="https://wentao.live/about.html">Wentao Zhu<sup>4</sup></a>
+            </div>
+        </center>
+        <center>
+        <div class="affiliations">
+            <span><sup>1</sup>University of Washington</span>&nbsp;&nbsp;&nbsp;
+            <span><sup>2</sup>Peking University</span>&nbsp;&nbsp;&nbsp;
+            <span><sup>3</sup>Carnegie Mellon University</span>&nbsp;&nbsp;&nbsp;
+            <span><sup>4</sup>Eastern Institute of Technology, Ningbo</span> <br>
+        </div>
+        </center>
+
+        <div style="clear: both">
+            <div class="paper-btn-parent">
+                <a class="paper-btn" href="https://arxiv.org/abs/2606.05896">
+                    <span class="fas fa-file-alt"></span>
+                    Paper
+                </a>
+                <a class="github-btn" href="#">
+                    <span class="fab fa-github"></span>
+                    Code
+                </a>
+        </div>
+
+        <div class="demo-carousel" id="demo-carousel">
+            <button class="compare-nav-btn demo-side-btn left" onclick="moveDemo(-1)" aria-label="Previous example">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 5 8 12 15 19"></polyline></svg>
+            </button>
+            <button class="compare-nav-btn demo-side-btn right" onclick="moveDemo(1)" aria-label="Next example">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"></polyline></svg>
+            </button>
+            <div class="demo-slide active" data-case="001">
+                <div class="demo-block">
+                    <div class="demo-scenario">
+                        <h3>Scenario</h3>
+                        <p>In an art gallery filled with masterpieces, Einstein encounters the mysterious girl from Vermeer's painting. They discuss the mysteries of the universe, the eternity of art, and the relativity of time.</p>
+                    </div>
+                    <div class="demo-video">
+                        <video playsinline loop muted autoplay controls>
+                            <source src="assets/videos/persona_video/case_001_stitched.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                    <div class="demo-profiles">
+                        <div class="demo-profile">
+                            <img src="assets/images/avatars/case_001_agent_a.jpg" alt="Einstein">
+                            <div class="demo-profile-body">
+                                <div class="demo-profile-name">Einstein</div>
+                                <div class="demo-profile-desc">Brilliant, humorous physicist with endless curiosity about the universe</div>
+                                <div class="demo-profile-goal"><b>Goal:</b> Explain how time and space bend like light, and discover if art can capture what science cannot measure</div>
+                            </div>
+                        </div>
+                        <div class="demo-profile">
+                            <img src="assets/images/avatars/case_001_agent_b.jpg" alt="Pearl">
+                            <div class="demo-profile-body">
+                                <div class="demo-profile-name">Pearl</div>
+                                <div class="demo-profile-desc">Mysterious, elegant muse representing timeless beauty and artistic essence</div>
+                                <div class="demo-profile-goal"><b>Goal:</b> Show how a single moment frozen in paint can speak across centuries, revealing truths beyond equations</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-slide" data-case="004">
+                <div class="demo-block">
+                    <div class="demo-scenario">
+                        <h3>Scenario</h3>
+                        <p>Two legendary entertainers meet beyond time and space. They share their experiences of fame, the burden of being icons, and the search for authentic self beneath the spotlight.</p>
+                    </div>
+                    <div class="demo-video">
+                        <video playsinline loop muted autoplay controls>
+                            <source src="assets/videos/persona_video/case_004_stitched.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                    <div class="demo-profiles">
+                        <div class="demo-profile">
+                            <img src="assets/images/avatars/case_004_agent_a.jpg" alt="Leslie">
+                            <div class="demo-profile-body">
+                                <div class="demo-profile-name">Leslie</div>
+                                <div class="demo-profile-desc">Sensitive, artistic soul who broke boundaries in Asian entertainment</div>
+                                <div class="demo-profile-goal"><b>Goal:</b> Express the pain of being misunderstood and find solace in artistic freedom beyond societal norms</div>
+                            </div>
+                        </div>
+                        <div class="demo-profile">
+                            <img src="assets/images/avatars/case_004_agent_b.jpg" alt="Marilyn">
+                            <div class="demo-profile-body">
+                                <div class="demo-profile-name">Marilyn</div>
+                                <div class="demo-profile-desc">Complex star hiding depth beneath glamorous exterior</div>
+                                <div class="demo-profile-goal"><b>Goal:</b> Share the loneliness of perfection and the desire to be seen for intelligence, not just beauty</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-slide" data-case="006">
+                <div class="demo-block">
+                    <div class="demo-scenario">
+                        <h3>Scenario</h3>
+                        <p>Two friends are meeting at a coffee shop, where one of them is having trouble keeping up with their bills.</p>
+                    </div>
+                    <div class="demo-video">
+                        <video playsinline loop muted autoplay controls>
+                            <source src="assets/videos/persona_video/case_006_stitched.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                    <div class="demo-profiles">
+                        <div class="demo-profile">
+                            <img src="assets/images/avatars/case_006_agent_a.jpg" alt="William King">
+                            <div class="demo-profile-body">
+                                <div class="demo-profile-name">William King</div>
+                                <div class="demo-profile-desc">Agreeableness</div>
+                                <div class="demo-profile-goal"><b>Goal:</b> Help your friend with their financial trouble, offering support while being sensitive to their pride and dignity</div>
+                            </div>
+                        </div>
+                        <div class="demo-profile">
+                            <img src="assets/images/avatars/case_006_agent_b.jpg" alt="Joseph Rodriguez">
+                            <div class="demo-profile-body">
+                                <div class="demo-profile-name">Joseph Rodriguez</div>
+                                <div class="demo-profile-desc">Extraversion</div>
+                                <div class="demo-profile-goal"><b>Goal:</b> Maintain your pride while accepting help, expressing gratitude without feeling like a burden</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-slide" data-case="007">
+                <div class="demo-block">
+                    <div class="demo-scenario">
+                        <h3>Scenario</h3>
+                        <p>Two roommates living together and sharing household chores. One of them, who is responsible for cooking, finds out that the other one refuses to eat anything they cook.</p>
+                    </div>
+                    <div class="demo-video">
+                        <video playsinline loop muted autoplay controls>
+                            <source src="assets/videos/persona_video/case_007_stitched.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                    <div class="demo-profiles">
+                        <div class="demo-profile">
+                            <img src="assets/images/avatars/case_007_agent_a.jpg" alt="Liam Roberts">
+                            <div class="demo-profile-body">
+                                <div class="demo-profile-name">Liam Roberts</div>
+                                <div class="demo-profile-desc">Agreeableness</div>
+                                <div class="demo-profile-goal"><b>Goal:</b> Convince your roommate to try your cooking, sharing the effort and care you put into meal preparation</div>
+                            </div>
+                        </div>
+                        <div class="demo-profile">
+                            <img src="assets/images/avatars/case_007_agent_b.jpg" alt="William Rodriguez">
+                            <div class="demo-profile-body">
+                                <div class="demo-profile-name">William Rodriguez</div>
+                                <div class="demo-profile-desc">Openness</div>
+                                <div class="demo-profile-goal"><b>Goal:</b> Express concerns about food preferences tactfully, while appreciating your roommate's effort and finding common ground</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="demo-dots-row">
+            <div class="compare-dots" id="demo-dots"></div>
+        </div>
+        <blockquote>
+            <p>
+                <b>[TL;DR]</b> We present <b>Resonant Minds</b>, a closed-loop dual-agent framework that unifies <b>multimodal perception</b>, <b>Theory of Mind social reasoning</b>, and <b>emotion-controllable multimodal expression</b>. Two persona-driven agents perceive each other, infer hidden mental states under information asymmetry, and respond with synchronized speech and video, completing a continuous speaker-listener interaction loop. We further construct a hierarchical <b>Persona-Scenario dataset</b> with psychologically grounded personas and private social goals, enabling evaluation of social interaction under information asymmetry.
+            </p>
+        </blockquote>
+    </div>
+    <br>
+
+    <section>
+        <h2> Abstract</h2>
+        <hr>
+        <p>
+        Creating lifelike digital humans with genuine social intelligence requires unifying cognitive reasoning and multimodal generation within a coherent framework. Current approaches treat these as separate tasks: Large Language Models excel at dialogue but lack embodied expression, while diffusion-based talking head models achieve visual fidelity but ignore social cognition. To bridge this gap, we propose a closed-loop dual-agent framework integrating perception, social reasoning, and expression into a continuous interaction cycle. The perception module analyzes partners' multimodal behaviors from video, while the social reasoning module infers hidden mental states through Theory of Mind and selects responses via an ensemble mechanism. The expression module then generates emotion-controllable dual-agent videos synthesizing both speaker speech and expression alongside listener reactive behaviors, capturing bidirectional dynamics absent in prior work. We construct a hierarchical Persona-Scenario dataset with psychologically grounded personas and private social goals to support evaluation under information asymmetry. Experiments on this dataset demonstrate competitive or superior performance on both dialogue quality and video generation metrics. Notably, our method surpasses even the full-information Script mode on key dialogue quality dimensions, suggesting that explicit mental state inference under uncertainty can elicit more thoughtful dialogue than unrestricted information access.
+        </p>
+        <br>
+
+        <h2>Method</h2>
+        <hr>
+        <h3>Persona-Scenario Dataset Curation</h3>
+        <p>
+            We construct a hierarchical Persona-Scenario dataset to support evaluation under <b>information asymmetry</b>. The personas are built through a <b>Sparse-to-Rich pipeline</b> that grows a few factual seeds into fully detailed characters. Each of the 50 personas comprises two layers: a <b>facts layer</b> of consistent biographical attributes such as job, background, and life story, and a <b>psychological layer</b> of behavioral narratives grounded in the Big Five framework, the five standard personality traits. The personas are balanced across personality dimensions and situated in 90 diverse social scenarios drawn from the Sotopia benchmark, spanning six interaction types including negotiation, collaboration, and persuasion, where each agent pursues private goals hidden from its partner.
+        </p>
+        <div class="subfig-row">
+            <figure>
+                <img src="assets/images/dataset01.png?v=2" alt="Big Five Personality Distribution">
+                <figcaption>(a) Big Five Personality Distribution</figcaption>
+            </figure>
+            <figure>
+                <img src="assets/images/dataset02.png?v=2" alt="Attributes Distribution">
+                <figcaption>(b) Attributes Distribution</figcaption>
+            </figure>
+            <figure>
+                <img src="assets/images/dataset03.png?v=2" alt="Scenario Distribution">
+                <figcaption>(c) Scenario Distribution</figcaption>
+            </figure>
+        </div>
+        <p class="caption text-center">Persona-Scenario dataset statistics</p>
+        <br>
+
+        <h3>Closed-Loop Framework for Dual-Agent Interaction</h3>
+        <p>
+            We model dual-agent interaction as a Partially Observable Markov Game in which each agent holds a private persona profile and a private social goal hidden from its partner, and runs three modules in a closed loop. <b>Perception</b> turns the partner's previous-turn video into structured observations. <b>Social Reasoning</b> infers the partner's hidden mental states through a Theory of Mind module and selects a response via an ensemble of evaluators. <b>Expression</b> renders the chosen response into a dual-agent video of both the speaker and the reactive listener. This video becomes the partner's input at the next turn, so the agents continuously exchange speaker and listener roles.
+        </p>
+        <div class="figure">
+            <img src="assets/images/pipeline.png" alt="Closed-loop framework overview">
+        </div>
+        <p class="caption text-center">Closed-loop framework for dual-agent interaction</p>
+
+    </section>
+
+    <section>
+        <h2>Results</h2>
+        <hr>
+        <h3>LLM Social Simulation</h3>
+        <p>
+            We compare against two baselines: an <i>Agent</i> mode that sees only its own persona and goals, and a full-information <i>Script</i> mode that sees both agents' profiles. Dialogue quality is assessed on goal completion and naturalness using four LLM evaluation frameworks. <i>Ours</i> outperforms the <i>Agent</i> baseline and even matches the full-information <i>Script</i> mode on key metrics, while better preserving private information.
+        </p>
+        <div class="figure">
+            <img src="assets/images/llm_social_sim.png" alt="LLM social simulation results">
+        </div>
+        <p class="caption text-center">Dialogue evaluation across four evaluators. <b style="color:#333">Bar heights are normalized to the percentage of each metric's valid range, and labels show the raw scores.</b> Script operates outside realistic information asymmetry.</p>
+
+        <div class="figure" style="margin-top: 32px;">
+            <img src="assets/images/tom_vis.png" alt="ToM causal case study">
+        </div>
+        <p class="caption text-center"><b>ToM causal case study.</b> <i>Script</i> mode violates information asymmetry, referencing family details that Kai never disclosed (shown in <span style="color:#d62728;font-weight:600">red</span>). <i>Agent</i> mode produces verbose probing that cannot converge (shown in <span style="color:#d62728;font-weight:600">red</span>), forcing Kai to over-disclose. In contrast, <i>Ours</i> infers through the ToM module that Kai fears being probed, and the Ensemble mechanism rejects further-probing candidates (shown in <span style="color:#d62728;font-weight:600">red</span>) to select a response that respects Kai's boundary (shown in <span style="color:#2ca02c;font-weight:600">green</span>) while still advancing Chen's goal.</p>
+
+        <h3>Talking Head Generation</h3>
+        <p>
+            We compare against state-of-the-art talking head methods on audio quality, visual synchronization, and emotional expressiveness. Our method achieves the best overall trade-off, leading on emotional expressiveness while remaining competitive on synchronization.
+        </p>
+        <div class="figure">
+            <img src="assets/images/talking_head_eval.png" alt="Talking head quantitative evaluation">
+        </div>
+        <p class="caption text-center">Audio and video quality comparison against state-of-the-art talking head methods.</p>
+        <div class="compare-carousel" id="compare-carousel">
+            <button class="compare-nav-btn demo-side-btn left" onclick="moveCompare(-1)" aria-label="Previous example">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 5 8 12 15 19"></polyline></svg>
+            </button>
+            <button class="compare-nav-btn demo-side-btn right" onclick="moveCompare(1)" aria-label="Next example">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"></polyline></svg>
+            </button>
+            <div class="compare-slide active" data-compare="case1">
+                <div class="compare-grid">
+                    <figure class="compare-cell">
+                        <figcaption>Ours</figcaption>
+                        <video class="compare-video" controls playsinline loop muted>
+                            <source src="assets/videos/video_sota_compare_1/comparison_case1_ours.mp4" type="video/mp4">
+                        </video>
+                    </figure>
+                    <figure class="compare-cell">
+                        <figcaption>DICE-Talk</figcaption>
+                        <video class="compare-video" controls playsinline loop muted>
+                            <source src="assets/videos/video_sota_compare_1/comparison_case1_dicetalk.mp4" type="video/mp4">
+                        </video>
+                    </figure>
+                    <figure class="compare-cell">
+                        <figcaption>EDTalk</figcaption>
+                        <video class="compare-video" controls playsinline loop muted>
+                            <source src="assets/videos/video_sota_compare_1/comparison_case1_edtalk.mp4" type="video/mp4">
+                        </video>
+                    </figure>
+                    <figure class="compare-cell">
+                        <figcaption>Sonic</figcaption>
+                        <video class="compare-video" controls playsinline loop muted>
+                            <source src="assets/videos/video_sota_compare_1/comparison_case1_sonic.mp4" type="video/mp4">
+                        </video>
+                    </figure>
+                </div>
+            </div>
+
+            <div class="compare-slide" data-compare="case2">
+                <div class="compare-grid">
+                    <figure class="compare-cell">
+                        <figcaption>Ours</figcaption>
+                        <video class="compare-video" controls playsinline loop muted>
+                            <source src="assets/videos/video_sota_compare_2/comparison_case3_ours.mp4" type="video/mp4">
+                        </video>
+                    </figure>
+                    <figure class="compare-cell">
+                        <figcaption>DICE-Talk</figcaption>
+                        <video class="compare-video" controls playsinline loop muted>
+                            <source src="assets/videos/video_sota_compare_2/comparison_case3_dicetalk.mp4" type="video/mp4">
+                        </video>
+                    </figure>
+                    <figure class="compare-cell">
+                        <figcaption>EDTalk</figcaption>
+                        <video class="compare-video" controls playsinline loop muted>
+                            <source src="assets/videos/video_sota_compare_2/comparison_case3_edtalk.mp4" type="video/mp4">
+                        </video>
+                    </figure>
+                    <figure class="compare-cell">
+                        <figcaption>Sonic</figcaption>
+                        <video class="compare-video" controls playsinline loop muted>
+                            <source src="assets/videos/video_sota_compare_2/comparison_case3_sonic.mp4" type="video/mp4">
+                        </video>
+                    </figure>
+                </div>
+            </div>
+        </div>
+        <div class="demo-dots-row">
+            <div class="compare-dots" id="compare-dots"></div>
+        </div>
+        <p class="caption text-center">Qualitative comparison with state-of-the-art talking head generation methods.</p>
+    </section>
+
+    <section>
+        <h2>Additional Results</h2>
+        <hr>
+        <h3>Emotion-Controllable Expression</h3>
+        <p class="carousel-desc">The Text-to-Emotion Adapter maps a natural-language emotion descriptor into emotion weights for video generation. It renders the same identity across diverse, clearly distinguishable emotion categories.</p>
+        <div class="figure" style="max-width:760px; margin-left:auto; margin-right:auto;">
+            <video controls playsinline loop muted style="width:100%; display:block; border-radius:8px;">
+                <source src="assets/videos/emotion_comp/emotion_comp.mp4" type="video/mp4">
+            </video>
+        </div>
+    </section>
+
+    <section id="bibtex">
+        <h2>Citation</h2>
+        <hr>
+        <pre><code>@misc{shangguan2026resonantmindsclosedloopsocial,
+      title={Resonant Minds: Closed-Loop Social Avatars with Theory of Mind},
+      author={Jianxu Shangguan and Jing Xu and Hang Ye and Xiaoxuan Ma and Yizhou Wang and Wentao Zhu},
+      year={2026},
+      eprint={2606.05896},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2606.05896},
+}
+</code></pre>
+
+    </section>
+
+</div>
+</body>
+</html>
