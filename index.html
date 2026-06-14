@@ -100,6 +100,39 @@ function setupCompareGrid(grid) {
     // videos default to paused with their own controls; nothing to wire up.
 }
 
+// Hover any video to play it with sound; pause when the cursor leaves.
+// Browsers block sound until the page gets a user gesture, so the first hover
+// may play muted; once the user clicks anywhere, the hovered clip unmutes.
+let hoveredVideo = null;
+function wireHoverPlay(v) {
+    v.addEventListener("mouseenter", () => {
+        hoveredVideo = v;
+        v.muted = false;
+        const p = v.play();
+        if (p && typeof p.catch === "function") {
+            p.catch(() => { v.muted = true; v.play().catch(() => {}); });
+        }
+    });
+    v.addEventListener("mouseleave", () => {
+        if (hoveredVideo === v) hoveredVideo = null;
+        v.pause();
+        v.muted = true;
+    });
+}
+// First user gesture unlocks audio: unmute whatever is being hovered,
+// and dismiss the one-time sound hint.
+function primeHoverAudio() {
+    if (hoveredVideo) {
+        hoveredVideo.muted = false;
+        hoveredVideo.play().catch(() => {});
+    }
+    const hint = document.getElementById("sound-hint");
+    if (hint) {
+        hint.classList.add("hidden");
+        setTimeout(() => hint.remove(), 500);
+    }
+}
+
 let compareIndex = 0;
 function buildCompareDots() {
     const slides = document.querySelectorAll("#compare-carousel .compare-slide");
@@ -152,7 +185,7 @@ function showDemo(idx) {
         const on = k === demoIndex;
         slide.classList.toggle("active", on);
         slide.querySelectorAll("video").forEach((v) => {
-            if (on) { v.play().catch(() => {}); } else { v.pause(); }
+            if (!on) { v.pause(); v.muted = true; }
         });
     });
     const dots = document.querySelectorAll("#demo-dots .compare-dot");
@@ -214,6 +247,10 @@ document.addEventListener("DOMContentLoaded", () => {
     buildCompareDots();
     showCompare(0);
 
+    document.querySelectorAll("video").forEach((v) => wireHoverPlay(v));
+    document.addEventListener("pointerdown", primeHoverAudio);
+    document.addEventListener("keydown", primeHoverAudio);
+
     buildDemoDots();
     showDemo(0);
 
@@ -241,8 +278,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
 <style type="text/css">
 body {
-    font-family: "Titillium Web", "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
-    font-weight: 300;
+    font-family: "Lato", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 400;
     font-size: 17px;
     margin-left: auto;
     margin-right: auto;
@@ -255,7 +292,7 @@ body {
 }
 
 b, strong {
-    font-weight: 600;
+    font-weight: 700;
 }
 h1 {
     font-weight:300;
@@ -591,6 +628,24 @@ blockquote {
 .demo-slide.active {
     display: block;
 }
+#sound-hint {
+    position: fixed;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(40, 40, 40, 0.88);
+    color: #fff;
+    font-size: 14px;
+    padding: 9px 16px;
+    border-radius: 20px;
+    z-index: 1000;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+}
+#sound-hint.hidden {
+    opacity: 0;
+}
 .demo-side-btn {
     position: absolute;
     top: 50%;
@@ -608,7 +663,7 @@ blockquote {
 .demo-block {
     max-width: 760px;
     margin: 0 auto;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: "Lato", "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 16px;
     color: #4a4a4a;
 }
@@ -814,7 +869,9 @@ blockquote {
 
 </style>
 
-    <link href='https://fonts.googleapis.com/css?family=Titillium+Web:400,600,700,400italic,600italic,700italic,300,300italic' rel='stylesheet' type='text/css'>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href='https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,400;1,700&display=swap' rel='stylesheet'>
     <head>
         <meta charset="utf-8">
         <title>Resonant Minds: Closed-Loop Social Avatars with Theory of Mind</title>
@@ -827,6 +884,7 @@ blockquote {
     </head>
 
 <body>
+<div id="sound-hint">🔊 Click anywhere to enable sound on hover</div>
 <div class="container">
     <div class="paper-title">
     <h1>
@@ -866,6 +924,12 @@ blockquote {
                 </a>
         </div>
 
+        <blockquote>
+            <p>
+                <b>[TL;DR]</b> <b>Resonant Minds</b> is a closed-loop dual-agent framework unifying <b>multimodal perception</b>, <b>Theory of Mind social reasoning</b>, and <b>emotion-controllable multimodal expression</b>, supported by a hierarchical <b>Persona-Scenario dataset</b>.
+            </p>
+        </blockquote>
+
         <div class="demo-carousel" id="demo-carousel">
             <button class="compare-nav-btn demo-side-btn left" onclick="moveDemo(-1)" aria-label="Previous example">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 5 8 12 15 19"></polyline></svg>
@@ -880,7 +944,7 @@ blockquote {
                         <p>In an art gallery filled with masterpieces, Einstein encounters the mysterious girl from Vermeer's painting. They discuss the mysteries of the universe, the eternity of art, and the relativity of time.</p>
                     </div>
                     <div class="demo-video">
-                        <video playsinline loop muted autoplay controls>
+                        <video playsinline loop muted controls>
                             <source src="assets/videos/persona_video/case_001_stitched.mp4" type="video/mp4">
                         </video>
                     </div>
@@ -912,7 +976,7 @@ blockquote {
                         <p>Two legendary entertainers meet beyond time and space. They share their experiences of fame, the burden of being icons, and the search for authentic self beneath the spotlight.</p>
                     </div>
                     <div class="demo-video">
-                        <video playsinline loop muted autoplay controls>
+                        <video playsinline loop muted controls>
                             <source src="assets/videos/persona_video/case_004_stitched.mp4" type="video/mp4">
                         </video>
                     </div>
@@ -944,7 +1008,7 @@ blockquote {
                         <p>Two friends are meeting at a coffee shop, where one of them is having trouble keeping up with their bills.</p>
                     </div>
                     <div class="demo-video">
-                        <video playsinline loop muted autoplay controls>
+                        <video playsinline loop muted controls>
                             <source src="assets/videos/persona_video/case_006_stitched.mp4" type="video/mp4">
                         </video>
                     </div>
@@ -976,7 +1040,7 @@ blockquote {
                         <p>Two roommates living together and sharing household chores. One of them, who is responsible for cooking, finds out that the other one refuses to eat anything they cook.</p>
                     </div>
                     <div class="demo-video">
-                        <video playsinline loop muted autoplay controls>
+                        <video playsinline loop muted controls>
                             <source src="assets/videos/persona_video/case_007_stitched.mp4" type="video/mp4">
                         </video>
                     </div>
@@ -1004,11 +1068,6 @@ blockquote {
         <div class="demo-dots-row">
             <div class="compare-dots" id="demo-dots"></div>
         </div>
-        <blockquote>
-            <p>
-                <b>[TL;DR]</b> We present <b>Resonant Minds</b>, a closed-loop dual-agent framework that unifies <b>multimodal perception</b>, <b>Theory of Mind social reasoning</b>, and <b>emotion-controllable multimodal expression</b>. Two persona-driven agents perceive each other, infer hidden mental states under information asymmetry, and respond with synchronized speech and video, completing a continuous speaker-listener interaction loop. We further construct a hierarchical <b>Persona-Scenario dataset</b> with psychologically grounded personas and private social goals, enabling evaluation of social interaction under information asymmetry.
-            </p>
-        </blockquote>
     </div>
     <br>
 
@@ -1022,6 +1081,16 @@ blockquote {
 
         <h2>Method</h2>
         <hr>
+        <h3>Closed-Loop Framework for Dual-Agent Interaction</h3>
+        <p>
+            We model dual-agent interaction as a Partially Observable Markov Game in which each agent holds a private persona profile and a private social goal hidden from its partner, and runs three modules in a closed loop. <b>Perception</b> turns the partner's previous-turn video into structured observations. <b>Social Reasoning</b> infers the partner's hidden mental states through a Theory of Mind module and selects a response via an ensemble of evaluators. <b>Expression</b> renders the chosen response into a dual-agent video of both the speaker and the reactive listener. This video becomes the partner's input at the next turn, so the agents continuously exchange speaker and listener roles.
+        </p>
+        <div class="figure">
+            <img src="assets/images/pipeline.png" alt="Closed-loop framework overview">
+        </div>
+        <p class="caption text-center">Closed-loop framework for dual-agent interaction</p>
+        <br>
+
         <h3>Persona-Scenario Dataset Curation</h3>
         <p>
             We construct a hierarchical Persona-Scenario dataset to support evaluation under <b>information asymmetry</b>. The personas are built through a <b>Sparse-to-Rich pipeline</b> that grows a few factual seeds into fully detailed characters. Each of the 50 personas comprises two layers: a <b>facts layer</b> of consistent biographical attributes such as job, background, and life story, and a <b>psychological layer</b> of behavioral narratives grounded in the Big Five framework, the five standard personality traits. The personas are balanced across personality dimensions and situated in 90 diverse social scenarios drawn from the Sotopia benchmark, spanning six interaction types including negotiation, collaboration, and persuasion, where each agent pursues private goals hidden from its partner.
@@ -1041,16 +1110,6 @@ blockquote {
             </figure>
         </div>
         <p class="caption text-center">Persona-Scenario dataset statistics</p>
-        <br>
-
-        <h3>Closed-Loop Framework for Dual-Agent Interaction</h3>
-        <p>
-            We model dual-agent interaction as a Partially Observable Markov Game in which each agent holds a private persona profile and a private social goal hidden from its partner, and runs three modules in a closed loop. <b>Perception</b> turns the partner's previous-turn video into structured observations. <b>Social Reasoning</b> infers the partner's hidden mental states through a Theory of Mind module and selects a response via an ensemble of evaluators. <b>Expression</b> renders the chosen response into a dual-agent video of both the speaker and the reactive listener. This video becomes the partner's input at the next turn, so the agents continuously exchange speaker and listener roles.
-        </p>
-        <div class="figure">
-            <img src="assets/images/pipeline.png" alt="Closed-loop framework overview">
-        </div>
-        <p class="caption text-center">Closed-loop framework for dual-agent interaction</p>
 
     </section>
 
