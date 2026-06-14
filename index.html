@@ -646,6 +646,13 @@ blockquote {
 #sound-hint.hidden {
     opacity: 0;
 }
+.hover-hint {
+    text-align: center;
+    font-weight: 700;
+    font-size: 15px;
+    color: #1f4fd8;
+    margin: 0 0 8px;
+}
 .demo-side-btn {
     position: absolute;
     top: 50%;
@@ -930,6 +937,7 @@ blockquote {
             </p>
         </blockquote>
 
+        <p class="hover-hint">🖱 Hover over a video to play it with sound</p>
         <div class="demo-carousel" id="demo-carousel">
             <button class="compare-nav-btn demo-side-btn left" onclick="moveDemo(-1)" aria-label="Previous example">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 5 8 12 15 19"></polyline></svg>
@@ -953,7 +961,7 @@ blockquote {
                             <img src="assets/images/avatars/case_001_agent_a.jpg" alt="Einstein">
                             <div class="demo-profile-body">
                                 <div class="demo-profile-name">Einstein</div>
-                                <div class="demo-profile-desc">Brilliant, humorous physicist with endless curiosity about the universe</div>
+                                <div class="demo-profile-desc">Openness</div>
                                 <div class="demo-profile-goal"><b>Goal:</b> Explain how time and space bend like light, and discover if art can capture what science cannot measure</div>
                             </div>
                         </div>
@@ -961,7 +969,7 @@ blockquote {
                             <img src="assets/images/avatars/case_001_agent_b.jpg" alt="Pearl">
                             <div class="demo-profile-body">
                                 <div class="demo-profile-name">Pearl</div>
-                                <div class="demo-profile-desc">Mysterious, elegant muse representing timeless beauty and artistic essence</div>
+                                <div class="demo-profile-desc">Openness</div>
                                 <div class="demo-profile-goal"><b>Goal:</b> Show how a single moment frozen in paint can speak across centuries, revealing truths beyond equations</div>
                             </div>
                         </div>
@@ -985,7 +993,7 @@ blockquote {
                             <img src="assets/images/avatars/case_004_agent_a.jpg" alt="Leslie">
                             <div class="demo-profile-body">
                                 <div class="demo-profile-name">Leslie</div>
-                                <div class="demo-profile-desc">Sensitive, artistic soul who broke boundaries in Asian entertainment</div>
+                                <div class="demo-profile-desc">Openness</div>
                                 <div class="demo-profile-goal"><b>Goal:</b> Express the pain of being misunderstood and find solace in artistic freedom beyond societal norms</div>
                             </div>
                         </div>
@@ -993,7 +1001,7 @@ blockquote {
                             <img src="assets/images/avatars/case_004_agent_b.jpg" alt="Marilyn">
                             <div class="demo-profile-body">
                                 <div class="demo-profile-name">Marilyn</div>
-                                <div class="demo-profile-desc">Complex star hiding depth beneath glamorous exterior</div>
+                                <div class="demo-profile-desc">Neuroticism</div>
                                 <div class="demo-profile-goal"><b>Goal:</b> Share the loneliness of perfection and the desire to be seen for intelligence, not just beauty</div>
                             </div>
                         </div>
@@ -1083,17 +1091,17 @@ blockquote {
         <hr>
         <h3>Closed-Loop Framework for Dual-Agent Interaction</h3>
         <p>
-            We model dual-agent interaction as a Partially Observable Markov Game in which each agent holds a private persona profile and a private social goal hidden from its partner, and runs three modules in a closed loop. <b>Perception</b> turns the partner's previous-turn video into structured observations. <b>Social Reasoning</b> infers the partner's hidden mental states through a Theory of Mind module and selects a response via an ensemble of evaluators. <b>Expression</b> renders the chosen response into a dual-agent video of both the speaker and the reactive listener. This video becomes the partner's input at the next turn, so the agents continuously exchange speaker and listener roles.
+            We model dual-agent interaction as a Partially Observable Markov Game, running three modules in a closed loop. <b>Perception</b> turns the partner's video into structured observations. <b>Social Reasoning</b> infers the partner's hidden mental states through a Theory of Mind module and selects a response via an ensemble of evaluators. <b>Expression</b> renders the chosen response into a dual-agent video of both the speaker and the reactive listener.
         </p>
         <div class="figure">
-            <img src="assets/images/pipeline.png" alt="Closed-loop framework overview">
+            <img src="assets/images/pipeline.png?v=2" alt="Closed-loop framework overview">
         </div>
         <p class="caption text-center">Closed-loop framework for dual-agent interaction</p>
         <br>
 
         <h3>Persona-Scenario Dataset Curation</h3>
         <p>
-            We construct a hierarchical Persona-Scenario dataset to support evaluation under <b>information asymmetry</b>. The personas are built through a <b>Sparse-to-Rich pipeline</b> that grows a few factual seeds into fully detailed characters. Each of the 50 personas comprises two layers: a <b>facts layer</b> of consistent biographical attributes such as job, background, and life story, and a <b>psychological layer</b> of behavioral narratives grounded in the Big Five framework, the five standard personality traits. The personas are balanced across personality dimensions and situated in 90 diverse social scenarios drawn from the Sotopia benchmark, spanning six interaction types including negotiation, collaboration, and persuasion, where each agent pursues private goals hidden from its partner.
+            We construct a hierarchical Persona-Scenario dataset to support evaluation under <b>information asymmetry</b>. Each persona comprises two layers: a <b>facts layer</b> of consistent biographical attributes, and a <b>psychological layer</b> of behavioral narratives grounded in the Big Five personality traits.
         </p>
         <div class="subfig-row">
             <figure>
@@ -1117,27 +1125,24 @@ blockquote {
         <h2>Results</h2>
         <hr>
         <h3>LLM Social Simulation</h3>
-        <p>
-            We compare against two baselines: an <i>Agent</i> mode that sees only its own persona and goals, and a full-information <i>Script</i> mode that sees both agents' profiles. Dialogue quality is assessed on goal completion and naturalness using four LLM evaluation frameworks. <i>Ours</i> outperforms the <i>Agent</i> baseline and even matches the full-information <i>Script</i> mode on key metrics, while better preserving private information.
-        </p>
+        <p class="hover-hint">🖱 Hover over the video to play</p>
         <div class="figure">
-            <img src="assets/images/llm_social_sim.png" alt="LLM social simulation results">
+            <video playsinline loop muted controls style="width:100%; display:block; border-radius:8px;">
+                <source src="assets/videos/tom_viz/tom_viz.mp4" type="video/mp4">
+            </video>
         </div>
-        <p class="caption text-center">Dialogue evaluation across four evaluators. <b style="color:#333">Bar heights are normalized to the percentage of each metric's valid range, and labels show the raw scores.</b> Script operates outside realistic information asymmetry.</p>
+        <p class="caption text-center"><b>Theory of Mind Visualization.</b> <i>Ours</i> infers through the ToM module that Kai fears being probed, and the Ensemble mechanism rejects further-probing candidates to select a response that respects Kai's boundary while still advancing Chen's goal.</p>
 
         <div class="figure" style="margin-top: 32px;">
-            <img src="assets/images/tom_vis.png" alt="ToM causal case study">
+            <img src="assets/images/llm_social_sim.png" alt="LLM social simulation results">
         </div>
-        <p class="caption text-center"><b>ToM causal case study.</b> <i>Script</i> mode violates information asymmetry, referencing family details that Kai never disclosed (shown in <span style="color:#d62728;font-weight:600">red</span>). <i>Agent</i> mode produces verbose probing that cannot converge (shown in <span style="color:#d62728;font-weight:600">red</span>), forcing Kai to over-disclose. In contrast, <i>Ours</i> infers through the ToM module that Kai fears being probed, and the Ensemble mechanism rejects further-probing candidates (shown in <span style="color:#d62728;font-weight:600">red</span>) to select a response that respects Kai's boundary (shown in <span style="color:#2ca02c;font-weight:600">green</span>) while still advancing Chen's goal.</p>
+        <p class="caption text-center">We compare against two baselines: an <i>Agent</i> mode that sees only its own persona and goals, and a full-information <i>Script</i> mode that sees both agents' profiles. <b style="color:#333">Bar heights are normalized to the percentage of each metric's valid range, and labels show the raw scores.</b></p>
 
-        <h3>Talking Head Generation</h3>
+        <h3 style="margin-top: 34px;">Talking Head Generation</h3>
         <p>
             We compare against state-of-the-art talking head methods on audio quality, visual synchronization, and emotional expressiveness. Our method achieves the best overall trade-off, leading on emotional expressiveness while remaining competitive on synchronization.
         </p>
-        <div class="figure">
-            <img src="assets/images/talking_head_eval.png" alt="Talking head quantitative evaluation">
-        </div>
-        <p class="caption text-center">Audio and video quality comparison against state-of-the-art talking head methods.</p>
+        <p class="hover-hint">🖱 Hover over a video to play it with sound</p>
         <div class="compare-carousel" id="compare-carousel">
             <button class="compare-nav-btn demo-side-btn left" onclick="moveCompare(-1)" aria-label="Previous example">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 5 8 12 15 19"></polyline></svg>
@@ -1207,8 +1212,13 @@ blockquote {
             <div class="compare-dots" id="compare-dots"></div>
         </div>
         <p class="caption text-center">Qualitative comparison with state-of-the-art talking head generation methods.</p>
+        <div class="figure" style="margin-top: 32px;">
+            <img src="assets/images/talking_head_eval.png" alt="Talking head quantitative evaluation">
+        </div>
+        <p class="caption text-center">Audio and video quality comparison against state-of-the-art talking head methods.</p>
     </section>
 
+    <!--
     <section>
         <h2>Additional Results</h2>
         <hr>
@@ -1220,6 +1230,7 @@ blockquote {
             </video>
         </div>
     </section>
+    -->
 
     <section id="bibtex">
         <h2>Citation</h2>
