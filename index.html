@@ -617,6 +617,59 @@ blockquote {
     .subfig-row { grid-template-columns: 1fr; }
 }
 
+/* ---- Animated quantitative charts (SeQuantCharts) ---- */
+.se-chart-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--se-cols, 2), minmax(0, 1fr));
+    gap: 26px;
+    align-items: stretch;
+    margin: 6px 0 4px;
+}
+.se-chart-panel { min-width: 0; }
+.se-chart-subtitle {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #444;
+    margin: 0 0 8px;
+}
+.se-chart-wrap {
+    position: relative;
+    height: var(--se-chart-h, 300px);
+    width: 100%;
+}
+.se-chart-wrap canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+.se-chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 16px;
+    min-height: 20px;
+    margin: 6px 0 18px;
+    font-size: 13px;
+    color: #555;
+}
+.se-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+.se-legend-swatch {
+    width: 12px;
+    height: 12px;
+    border: 1px solid rgba(100, 116, 139, 0.55);
+    border-radius: 2px;
+    display: inline-block;
+}
+@media (max-width: 980px) {
+    .se-chart-grid { grid-template-columns: 1fr; }
+}
+
 .demo-carousel {
     position: relative;
     width: 100%;
@@ -1132,10 +1185,28 @@ blockquote {
         </div>
         <p class="caption text-center"><b>Theory of Mind Visualization.</b> <i>Ours</i> infers through the ToM module that Kai fears being probed, and the Ensemble mechanism rejects further-probing candidates to select a response that respects Kai's boundary while still advancing Chen's goal.</p>
 
-        <div class="figure" style="margin-top: 32px;">
-            <img src="assets/images/llm_social_sim.png" alt="LLM social simulation results">
+        <div style="margin-top: 32px;">
+            <div class="se-chart-legend"><span class="se-legend-item"><span class="se-legend-swatch" style="background:rgba(148,163,184,0.82);border-color:rgba(100,116,139,0.65)"></span>Agent</span><span class="se-legend-item"><span class="se-legend-swatch" style="background:rgba(59,130,246,0.88);border-color:rgba(30,64,175,0.72)"></span>Ours</span><span class="se-legend-item"><span class="se-legend-swatch" style="background:rgba(217,119,6,0.70);border-color:rgba(146,64,14,0.72);border-style:dashed"></span>Script reference</span></div>
+            <div class="se-chart-grid" style="--se-cols:2">
+                <div class="se-chart-panel">
+                    <p class="se-chart-subtitle">Sotopia-Eval</p>
+                    <div class="se-chart-wrap" style="--se-chart-h:318px"><canvas id="llm-social-sim-sotopia-eval" aria-label="Sotopia-Eval"></canvas></div>
+                </div>
+                <div class="se-chart-panel">
+                    <p class="se-chart-subtitle">LLM-Eval</p>
+                    <div class="se-chart-wrap" style="--se-chart-h:318px"><canvas id="llm-social-sim-llm-eval" aria-label="LLM-Eval"></canvas></div>
+                </div>
+                <div class="se-chart-panel">
+                    <p class="se-chart-subtitle">GPT-Score</p>
+                    <div class="se-chart-wrap" style="--se-chart-h:318px"><canvas id="llm-social-sim-gpt-score" aria-label="GPT-Score"></canvas></div>
+                </div>
+                <div class="se-chart-panel">
+                    <p class="se-chart-subtitle">G-Eval</p>
+                    <div class="se-chart-wrap" style="--se-chart-h:318px"><canvas id="llm-social-sim-g-eval" aria-label="G-Eval"></canvas></div>
+                </div>
+            </div>
         </div>
-        <p class="caption text-center">We compare against two baselines: an <i>Agent</i> mode that sees only its own persona and goals, and a full-information <i>Script</i> mode that sees both agents' profiles. <b style="color:#333">Bar heights are normalized to the percentage of each metric's valid range, and labels show the raw scores.</b></p>
+        <p class="caption text-center">We compare against two baselines: an <i>Agent</i> mode that sees only its own persona and goals, and a full-information <i>Script</i> mode that sees both agents' profiles.</p>
 
         <h3 style="margin-top: 34px;">Talking Head Generation</h3>
         <p>
@@ -1210,8 +1281,34 @@ blockquote {
             <div class="compare-dots" id="compare-dots"></div>
         </div>
         <p class="caption text-center">Qualitative comparison with state-of-the-art talking head generation methods.</p>
-        <div class="figure" style="margin-top: 32px;">
-            <img src="assets/images/talking_head_eval.png" alt="Talking head quantitative evaluation">
+        <div style="margin-top: 32px;">
+            <div class="se-chart-legend"><span class="se-legend-item"><span class="se-legend-swatch" style="background:rgba(148,163,184,0.82);border-color:rgba(100,116,139,0.65)"></span>Baselines</span><span class="se-legend-item"><span class="se-legend-swatch" style="background:rgba(59,130,246,0.88);border-color:rgba(30,64,175,0.72)"></span>Ours</span></div>
+            <div class="se-chart-grid" style="--se-cols:3">
+                <div class="se-chart-panel">
+                    <p class="se-chart-subtitle">Open-D &uarr;</p>
+                    <div class="se-chart-wrap" style="--se-chart-h:288px"><canvas id="talking-head-eval-open-d" aria-label="Open-D"></canvas></div>
+                </div>
+                <div class="se-chart-panel">
+                    <p class="se-chart-subtitle">Emo-Acc &uarr;</p>
+                    <div class="se-chart-wrap" style="--se-chart-h:288px"><canvas id="talking-head-eval-emo-acc" aria-label="Emo-Acc"></canvas></div>
+                </div>
+                <div class="se-chart-panel">
+                    <p class="se-chart-subtitle">LipLMD &darr;</p>
+                    <div class="se-chart-wrap" style="--se-chart-h:288px"><canvas id="talking-head-eval-liplmd" aria-label="LipLMD"></canvas></div>
+                </div>
+                <div class="se-chart-panel">
+                    <p class="se-chart-subtitle">AVOffset &rarr;0</p>
+                    <div class="se-chart-wrap" style="--se-chart-h:288px"><canvas id="talking-head-eval-avoffset" aria-label="AVOffset"></canvas></div>
+                </div>
+                <div class="se-chart-panel">
+                    <p class="se-chart-subtitle">AVConf &uarr;</p>
+                    <div class="se-chart-wrap" style="--se-chart-h:288px"><canvas id="talking-head-eval-avconf" aria-label="AVConf"></canvas></div>
+                </div>
+                <div class="se-chart-panel">
+                    <p class="se-chart-subtitle">Emo Score &uarr;</p>
+                    <div class="se-chart-wrap" style="--se-chart-h:288px"><canvas id="talking-head-eval-emo-score" aria-label="Emo Score"></canvas></div>
+                </div>
+            </div>
         </div>
         <p class="caption text-center">Audio and video quality comparison against state-of-the-art talking head methods.</p>
     </section>
@@ -1247,5 +1344,7 @@ blockquote {
     </section>
 
 </div>
+<script src="assets/js/se-quant-charts.js"></script>
+<script src="assets/js/charts-data.js"></script>
 </body>
 </html>
