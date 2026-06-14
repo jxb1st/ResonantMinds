@@ -126,11 +126,6 @@ function primeHoverAudio() {
         hoveredVideo.muted = false;
         hoveredVideo.play().catch(() => {});
     }
-    const hint = document.getElementById("sound-hint");
-    if (hint) {
-        hint.classList.add("hidden");
-        setTimeout(() => hint.remove(), 500);
-    }
 }
 
 let compareIndex = 0;
@@ -247,7 +242,9 @@ document.addEventListener("DOMContentLoaded", () => {
     buildCompareDots();
     showCompare(0);
 
-    document.querySelectorAll("video").forEach((v) => wireHoverPlay(v));
+    document.querySelectorAll("video").forEach((v) => {
+        if (!v.classList.contains("no-hover")) wireHoverPlay(v);
+    });
     document.addEventListener("pointerdown", primeHoverAudio);
     document.addEventListener("keydown", primeHoverAudio);
 
@@ -424,7 +421,7 @@ hr {
     vertical-align: -6px;
 }
 p {
-    line-height: 1.25em;
+    line-height: 1.55em;
 }
 .caption {
     font-size: 16px;
@@ -525,13 +522,13 @@ pre {
 
 blockquote {
     background-color: rgba(40, 40, 40, 0.2);
-    padding: 0px;
     margin: 2px 0;
     border-radius: 10px;
-    padding-top: 1px;
-    padding-bottom: 1px;
-    padding-left: 5px;
-    padding-right: 5px;
+    padding: 8px 16px;
+    text-align: center;
+}
+blockquote p {
+    line-height: 1.5em;
 }
 .video-carousel {
     position: relative;
@@ -981,7 +978,6 @@ blockquote {
     </head>
 
 <body>
-<div id="sound-hint">🔊 Click anywhere to enable sound on hover</div>
 <div class="container">
     <div class="paper-title">
     <h1>
@@ -1015,7 +1011,7 @@ blockquote {
                     <span class="fas fa-file-alt"></span>
                     Paper
                 </a>
-                <a class="github-btn" href="#">
+                <a class="github-btn" href="https://github.com/ResonantMinds/ResonantMinds">
                     <span class="fab fa-github"></span>
                     Code
                 </a>
@@ -1165,7 +1161,7 @@ blockquote {
         <div class="demo-dots-row">
             <div class="compare-dots" id="demo-dots"></div>
         </div>
-        <p class="hover-hint">🖱 Hover over a video to play it with sound</p>
+        <p class="hover-hint">🖱 Hover over a video to play it with sound &nbsp;·&nbsp; 🔊 Click anywhere to enable sound</p>
     </div>
     <br>
 
@@ -1215,15 +1211,20 @@ blockquote {
         <h2>Results</h2>
         <hr>
         <h3>LLM Social Simulation</h3>
+        <p>
+            Under information asymmetry, each agent sees only its own goals. By reasoning about the partner's hidden mental states, our method keeps the conversation socially coherent while still advancing its own goal, as visualized below.
+        </p>
         <div class="figure">
-            <video playsinline loop muted controls style="width:100%; display:block; border-radius:8px;">
+            <video class="no-hover" playsinline loop muted autoplay style="width:100%; display:block; border-radius:8px;">
                 <source src="assets/videos/tom_viz/tom_viz.mp4" type="video/mp4">
             </video>
         </div>
-        <p class="hover-hint">🖱 Hover over the video to play</p>
         <p class="caption text-center"><b>Theory of Mind Visualization.</b> <i>Ours</i> infers through the ToM module that Kai fears being probed, and the Ensemble mechanism rejects further-probing candidates to select a response that respects Kai's boundary while still advancing Chen's goal.</p>
 
-        <div style="margin-top: 32px;">
+        <p style="margin-top: 26px;">
+            Across four LLM evaluators, our method outperforms the realistic <i>Agent</i> baseline and even matches the full-information <i>Script</i> reference on key dialogue-quality metrics.
+        </p>
+        <div style="margin-top: 6px;">
             <div class="se-chart-legend"><span class="se-legend-item"><span class="se-legend-swatch" style="background:rgba(242,214,162,0.95);border-color:rgba(180,145,70,0.55)"></span>Agent</span><span class="se-legend-item"><span class="se-legend-swatch" style="background:rgba(156,192,230,0.97);border-color:rgba(70,120,180,0.7)"></span>Ours</span><span class="se-legend-item"><span class="se-legend-swatch" style="background:rgba(236,229,243,0.97);border-color:rgba(155,143,176,0.85);border-style:dashed"></span>Script reference</span></div>
             <div class="se-chart-grid" style="--se-cols:2">
                 <div class="se-chart-panel">
@@ -1244,7 +1245,6 @@ blockquote {
                 </div>
             </div>
         </div>
-        <p class="caption text-center">We compare against two baselines: an <i>Agent</i> mode that sees only its own persona and goals, and a full-information <i>Script</i> mode that sees both agents' profiles.</p>
 
         <h3 style="margin-top: 34px;">Talking Head Generation</h3>
         <p>
@@ -1318,9 +1318,12 @@ blockquote {
         <div class="demo-dots-row">
             <div class="compare-dots" id="compare-dots"></div>
         </div>
-        <p class="hover-hint">🖱 Hover over a video to play it with sound</p>
         <p class="caption text-center">Qualitative comparison with state-of-the-art talking head generation methods.</p>
-        <div style="margin-top: 32px;">
+        <p class="hover-hint">🖱 Hover over a video to play it with sound</p>
+        <p style="margin-top: 26px;">
+            Quantitatively, our method leads on emotion accuracy and open-domain audio quality while staying competitive on lip-sync, giving the best overall trade-off across metrics.
+        </p>
+        <div style="margin-top: 6px;">
             <div class="se-chart-legend"><span class="se-legend-item"><span class="se-legend-swatch" style="background:rgba(242,214,162,0.95);border-color:rgba(180,145,70,0.55)"></span>Baselines</span><span class="se-legend-item"><span class="se-legend-swatch" style="background:rgba(156,192,230,0.97);border-color:rgba(70,120,180,0.7)"></span>Ours</span></div>
             <div class="se-chart-grid" style="--se-cols:3">
                 <div class="se-chart-panel">
@@ -1349,7 +1352,6 @@ blockquote {
                 </div>
             </div>
         </div>
-        <p class="caption text-center">Audio and video quality comparison against state-of-the-art talking head methods.</p>
     </section>
 
     <!--
