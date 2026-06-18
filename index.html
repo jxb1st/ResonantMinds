@@ -83,8 +83,9 @@ function startCarouselAutoRotate(carouselId, intervalMs = 3500) {
 }
 
 function isManagedVideo(video) {
-    // videos whose playback is driven by the demo/compare carousels manage themselves
-    return !!(video.closest && (video.closest(".compare-carousel") || video.closest(".demo-carousel")));
+    // videos whose playback is driven by the demo/compare carousels manage themselves;
+    // the looping teaser clip is also self-managed (always autoplaying, like a GIF)
+    return !!(video.closest && (video.closest(".compare-carousel") || video.closest(".demo-carousel") || video.closest(".teaser-gif")));
 }
 
 function pauseOtherVideos(currentVideo) {
@@ -846,7 +847,8 @@ blockquote p {
     margin: 6px auto 22px;
     text-align: center;
 }
-.teaser-gif img {
+.teaser-gif img,
+.teaser-gif video {
     width: 100%;
     max-width: 720px;
     height: auto;
@@ -1041,7 +1043,7 @@ blockquote p {
         </div>
 
         <div class="teaser-gif">
-            <img src="assets/gif/teaser.gif?v=3" alt="Resonant Minds teaser">
+            <video class="no-hover" src="assets/gif/teaser.mp4" autoplay loop muted playsinline></video>
         </div>
 
         <blockquote>
